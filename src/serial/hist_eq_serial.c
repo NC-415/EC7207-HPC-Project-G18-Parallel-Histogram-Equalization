@@ -2,10 +2,10 @@
   Serial Histogram Equalization (Grayscale, 8-bit) for PGM (P5) images.
 
   Build (Linux/macOS):
-    gcc -O2 -std=c11 hist_eq_serial.c -o hist_eq_serial
+    gcc -O2 -std=c11 src/serial/hist_eq_serial.c -o build/hist_eq_serial
 
   Run:
-    ./hist_eq_serial input.pgm output_equalized.pgm
+    ./build/hist_eq_serial output/input.pgm output/output_serial.pgm
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -175,7 +175,7 @@ static void hist_equalize_u8(uint8_t *img, int w, int h) {
 
 int main(int argc, char **argv) {
     if (argc != 3) {
-        fprintf(stderr, "Usage: %s input.pgm output_equalized.pgm\n", argv[0]);
+        fprintf(stderr, "Usage: %s output/input.pgm output/output_serial.pgm\n", argv[0]);
         return 1;
     }
 
