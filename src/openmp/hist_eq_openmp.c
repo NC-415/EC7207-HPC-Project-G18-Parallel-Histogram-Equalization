@@ -3,12 +3,10 @@
  Based on the serial PGM implementation
 
  Compile:
-   gcc -O2 -fopenmp -std=c11 hist_eq_openmp.c -o hist_eq_openmp
-
-
+   gcc -O2 -fopenmp -std=c11 src/openmp/hist_eq_openmp.c -o build/hist_eq_openmp
 
  Run:
-   ./hist_eq_openmp input.pgm output_openmp.pgm
+   ./build/hist_eq_openmp output/input.pgm output/output_openmp.pgm
 */
 
 #include <stdio.h>
@@ -190,7 +188,7 @@ static void hist_equalize_openmp(uint8_t *img,int w,int h){
 int main(int argc,char **argv){
 
     if(argc!=3){
-        printf("Usage: %s input.pgm output_equalized_openmp.pgm\n",argv[0]);
+        printf("Usage: %s output/input.pgm output/output_openmp.pgm\n", argv[0]);
         return 1;
     }
 
@@ -199,9 +197,9 @@ int main(int argc,char **argv){
     int thread_counts[] = {1,2,4,8};
     int experiments = 4;
 
-    FILE *fp = fopen("results.txt","w");
+    FILE *fp = fopen("results/benchmarks/openmp_execution_results.txt", "w");
     if(!fp){
-        printf("Error: Could not open results.txt for writing\n");
+        printf("Error: Could not open results/benchmarks/openmp_results.txt for writing\n");
         return 1;
     }
 

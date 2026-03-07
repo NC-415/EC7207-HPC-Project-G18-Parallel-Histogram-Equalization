@@ -4,10 +4,11 @@ import numpy as np
 import cv2
 from pathlib import Path
 
-# get script directory
-code_dir = Path(__file__).resolve().parent
-input_img = code_dir / "input_image.png"
-output_img = code_dir / "input.pgm"
+# Navigate to project root and locate data/output directories
+script_dir = Path(__file__).resolve().parent
+project_root = script_dir.parent.parent
+input_img = project_root / "data" / "input_image.png"
+output_img = project_root / "output" / "input.pgm"
 
 # read input image as grayscale
 img = cv2.imread(str(input_img), cv2.IMREAD_GRAYSCALE)

@@ -1,4 +1,4 @@
-# Run :  python3 openmp_graph.py
+# Run :  python3 plot_openmp_result.py
 
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -7,12 +7,12 @@ threads = []
 times = []
 
 # Resolve paths based on this script's location
-output_dir = Path(__file__).resolve().parent          # .../Output
-project_root = output_dir.parent                      # .../EC7207-HPC-Project-G18-Parallel-Histogram-Equalization
-results_path = project_root / "Code" / "results.txt"   # .../Code/results.txt
-images_dir = project_root / "Images"                  # .../Images
-images_dir.mkdir(parents=True, exist_ok=True)
-image_path = images_dir / "openmp_execution_time.png"
+script_dir = Path(__file__).resolve().parent
+project_root = script_dir.parent.parent
+results_path = project_root / "results" / "benchmarks" / "openmp_results.txt"
+plots_dir = project_root / "results" / "plots"
+plots_dir.mkdir(parents=True, exist_ok=True)
+image_path = plots_dir / "openmp_execution_time_plot.png"
 
 # read results
 if not results_path.exists():
