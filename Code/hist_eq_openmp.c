@@ -187,39 +187,50 @@ static void hist_equalize_openmp(uint8_t *img,int w,int h){
 }
 
 
-
-
-
 int main(int argc,char **argv){
 
     if(argc!=3){
-        printf("Usage: %s input.pgm output.pgm\n",argv[0]);
+        printf("Usage: %s input.pgm output_equalized_openmp.pgm\n",argv[0]);
         return 1;
     }
 
     int w,h,maxval;
 
-    uint8_t *img=read_pgm_p5(argv[1],&w,&h,&maxval);
+    int thread_counts[] = {1,2,4,8};
+    int experiments = 4;
 
-    if(!img) return 1;
+    FILE *fp = fopen("results.txt","w");
+    if(!fp){
+        printf("Error: Could not open results.txt for writing\n");
+        return 1;
+    }
 
+    for(int i=0;i<experiments;i++){
 
+        int threads = thread_counts[i];
 
-    double start=omp_get_wtime();
+        omp_set_num_threads(threads);
 
-    hist_equalize_openmp(img,w,h);
+        uint8_t *img = read_pgm_p5(argv[1],&w,&h,&maxval);
 
-    double end=omp_get_wtime();
+        double start = omp_get_wtime();
 
+        hist_equalize_openmp(img,w,h);
 
+        double end = omp_get_wtime();
 
-    printf("OpenMP Execution Time: %f seconds\n",end-start);
+        double time = end - start;
 
+        printf("Threads: %d Time: %f\n",threads,time);
 
+        fprintf(fp,"%d %f\n",threads,time);
 
-    write_pgm_p5(argv[2],img,w,h);
+        write_pgm_p5(argv[2],img,w,h);
 
-    free(img);
+        free(img);
+    }
+
+    fclose(fp);
 
     return 0;
 }
