@@ -7,12 +7,12 @@
   Run:
     ./hist_eq_serial input.pgm output_equalized.pgm
 */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 
 #define L 256
 
@@ -186,7 +186,17 @@ int main(int argc, char **argv) {
     uint8_t *img = read_pgm_p5(in_path, &w, &h, &maxval);
     if (!img) return 1;
 
+    // -------- Start Timing --------
+    clock_t start = clock();
+
     hist_equalize_u8(img, w, h);
+
+    clock_t end = clock();
+    // -------- End Timing --------
+
+    double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+
+    printf("Serial Execution Time: %f seconds\n", time_spent);
 
     if (!write_pgm_p5(out_path, img, w, h)) {
         free(img);
