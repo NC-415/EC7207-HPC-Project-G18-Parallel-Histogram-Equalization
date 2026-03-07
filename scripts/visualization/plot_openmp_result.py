@@ -9,7 +9,7 @@ times = []
 # Resolve paths based on this script's location
 script_dir = Path(__file__).resolve().parent
 project_root = script_dir.parent.parent
-results_path = project_root / "results" / "benchmarks" / "openmp_results.txt"
+results_path = project_root / "results" / "benchmarks" / "openmp_execution_results.txt"
 plots_dir = project_root / "results" / "plots"
 plots_dir.mkdir(parents=True, exist_ok=True)
 image_path = plots_dir / "openmp_execution_time_plot.png"

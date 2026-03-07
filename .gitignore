@@ -12,7 +12,6 @@ venv/
 .venv/
 env/
 hpc_env/
-Code/hpc_env/
 
 # VS Code
 .vscode/
@@ -33,7 +32,6 @@ a.out
 build/
 cmake-build-*/
 
-# Generated benchmark/output files
-Code/input.pgm
-Code/output*.pgm
-Code/*.pgm
+# Generated output files
+output/
+*.pgm

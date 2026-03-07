@@ -199,7 +199,7 @@ int main(int argc,char **argv){
 
     FILE *fp = fopen("results/benchmarks/openmp_execution_results.txt", "w");
     if(!fp){
-        printf("Error: Could not open results/benchmarks/openmp_results.txt for writing\n");
+        printf("Error: Could not open results/benchmarks/openmp__execution_results.txt for writing\n");
         return 1;
     }
 
