@@ -1,12 +1,11 @@
 /*
-  MPI Parallel Histogram Equalization
-
-
+  MPI Parallel Histogram Equalization (Fixed)
+  
   Compile:
-    mpicc -O2 -std=c11  src/openmp/hist_eq_openmp.c -o build/hist_eq_mpi
+    mpicc -O2 -std=c11 src/mpi/hist_eq_mpi.c -o build/hist_eq_mpi
 
   Run:
-    mpirun -np 4 ./build/hist_eq_mpi output/input.pgm output/output_mpi.pgm
+    mpirun -np 1 ./build/hist_eq_mpi output/input.pgm output/output_mpi.pgm
 */
 
 #include <stdio.h>
@@ -18,7 +17,7 @@
 
 #define L 256
 
-// ---------- PGM Reader/Writer (Same as your Serial/OpenMP) ----------
+// ---------- PGM Reader/Writer Helpers ----------
 
 static void skip_comments_and_whitespace(FILE *fp) {
     int c;
@@ -42,14 +41,14 @@ static uint8_t *read_pgm_p5(const char *path, int *w, int *h, int *maxval) {
     FILE *fp = fopen(path, "rb");
     if (!fp) return NULL;
     char magic[3];
-    fread(magic, 1, 2, fp);
+    if (fread(magic, 1, 2, fp) != 2) { fclose(fp); return NULL; }
     magic[2] = '\0';
     if (strcmp(magic, "P5") != 0) { fclose(fp); return NULL; }
-    read_int(fp, w); read_int(fp, h); read_int(fp, maxval);
-    fgetc(fp);
+    if (!read_int(fp, w) || !read_int(fp, h) || !read_int(fp, maxval)) { fclose(fp); return NULL; }
+    fgetc(fp); // consume single whitespace
     size_t n = (size_t)(*w) * (*h);
     uint8_t *data = malloc(n);
-    fread(data, 1, n, fp);
+    if (fread(data, 1, n, fp) != n) { free(data); fclose(fp); return NULL; }
     fclose(fp);
     return data;
 }
@@ -63,7 +62,7 @@ static int write_pgm_p5(const char *path, const uint8_t *data, int w, int h) {
     return 1;
 }
 
-// ---------- MPI Logic ----------
+// ---------- Main MPI Logic ----------
 
 int main(int argc, char **argv) {
     int rank, size;
@@ -72,35 +71,37 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     if (argc != 3) {
-        if (rank == 0) printf("Usage: %s <input.pgm> <output.pgm>\n", argv[0]);
+        if (rank == 0) printf("Usage: mpirun -np <n> %s <input.pgm> <output.pgm>\n", argv[0]);
         MPI_Finalize();
         return 1;
     }
 
     int w, h, maxval;
     uint8_t *full_image = NULL;
+
+    // FIX 1: Allocate metadata arrays on ALL ranks so MPI_Bcast has a valid destination
     int *send_counts = malloc(size * sizeof(int));
     int *displs = malloc(size * sizeof(int));
 
-    // Rank 0 handles File I/O
     if (rank == 0) {
         full_image = read_pgm_p5(argv[1], &w, &h, &maxval);
         if (!full_image) {
+            fprintf(stderr, "Error: Could not read image %s\n", argv[1]);
             MPI_Abort(MPI_COMM_WORLD, 1);
         }
 
-        // Calculate chunks for each process (handles remainders)
-        int total_pixels = w * h;
+        // FIX 2: Use long long to handle very large images (prevent overflow)
+        long long total_pixels = (long long)w * h;
         int rem = total_pixels % size;
         int sum = 0;
         for (int i = 0; i < size; i++) {
-            send_counts[i] = total_pixels / size + (i < rem ? 1 : 0);
+            send_counts[i] = (int)(total_pixels / size) + (i < rem ? 1 : 0);
             displs[i] = sum;
             sum += send_counts[i];
         }
     }
 
-    // Broadcast metadata
+    // Broadcast metadata to all processes
     MPI_Bcast(&w, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(&h, 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(send_counts, size, MPI_INT, 0, MPI_COMM_WORLD);
@@ -112,7 +113,7 @@ int main(int argc, char **argv) {
     // --- Start Timing ---
     double start_time = MPI_Wtime();
 
-    // 1. Distribute image chunks
+    // 1. Distribute image chunks using Scatterv (handles remainders)
     MPI_Scatterv(full_image, send_counts, displs, MPI_UNSIGNED_CHAR,
                  local_pixels, local_n, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
@@ -126,7 +127,7 @@ int main(int argc, char **argv) {
     uint32_t global_hist[L] = {0};
     MPI_Allreduce(local_hist, global_hist, L, MPI_UINT32_T, MPI_SUM, MPI_COMM_WORLD);
 
-    // 4. Compute CDF and LUT (identical to your OpenMP logic)
+    // 4. Compute CDF and LUT
     uint32_t cdf[L];
     size_t T = (size_t)w * h;
     cdf[0] = global_hist[0];
@@ -144,9 +145,7 @@ int main(int argc, char **argv) {
             else {
                 double val = ((double)(cdf[i] - cdf_min) / (T - cdf_min)) * (L - 1);
                 int mapped = (int)(val + 0.5);
-                if (mapped < 0) mapped = 0;
-                if (mapped > 255) mapped = 255;
-                lut[i] = (uint8_t)mapped;
+                lut[i] = (uint8_t)(mapped > 255 ? 255 : (mapped < 0 ? 0 : mapped));
             }
         }
 
@@ -163,19 +162,22 @@ int main(int argc, char **argv) {
     double end_time = MPI_Wtime();
     // --- End Timing ---
 
-    if (rank == 0) {
-        printf("MPI Processes: %d Time: %f\n", size, end_time - start_time);
+   if (rank == 0) {
+        printf("MPI Processes: %d | Time: %f seconds\n", size, end_time - start_time);
         
-        // Save results to file similar to your OpenMP benchmarking
-        FILE *res_fp = fopen("results/benchmarks/mpi_execution_results.txt", "a");
+        // Open for appending ("a") to collect all experiment results in one file
+        FILE *res_fp = fopen("results/benchmarks/mpi_benchmarks.txt", "a");
         if(res_fp) {
+            // FORMAT: <Number of Processes> <Execution Time>
             fprintf(res_fp, "%d %f\n", size, end_time - start_time);
             fclose(res_fp);
+        } else {
+            fprintf(stderr, "Error: Could not open benchmarks file.\n");
         }
         
         write_pgm_p5(argv[2], full_image, w, h);
         free(full_image);
-    }
+    }       
 
     free(local_pixels);
     free(send_counts);
