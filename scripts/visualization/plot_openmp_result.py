@@ -1,4 +1,4 @@
-# Run :  python3 plot_openmp_result.py
+# Run :  python3 scripts/visualization/plot_openmp_result.py
 
 import matplotlib.pyplot as plt
 from pathlib import Path
