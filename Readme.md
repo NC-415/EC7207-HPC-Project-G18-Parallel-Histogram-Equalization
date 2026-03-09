@@ -48,6 +48,11 @@ python3 scripts/visualization/plot_openmp_result.py
 
 ## 5.1 ) Run implementations
     mpirun -np 1 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+    mpirun -np 2 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+    mpirun -np 3 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+    mpirun -np 4 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+    mpirun -np 5 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+    mpirun -np 6 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
 
 ## 5.2) Open results for visual check (optional)
 eog output/output_mpi.pgm
