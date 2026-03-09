@@ -1,6 +1,62 @@
-To open the pgm files use the below command:  
-eog output_openmp.pgm
+## 🚀 Quick Start (End-to-End Pipeline)
 
+Run these commands from the project root.
+
+### Create Python virtual environment (first time only)
+
+```bash
+python3 -m venv hpc_env
+source hpc_env/bin/activate
+python3 -m pip install --upgrade pip
+pip install numpy opencv-python matplotlib
+```
+
+```bash
+# 1) Activate Python environment
+source hpc_env/bin/activate
+
+# 2) Preprocess input image (creates grayscale + resized input for C code)
+python3 scripts/preprocessing/input_image_processing.py
+
+# 3) Compile implementations - Serial Code
+
+mkdir -p build
+gcc -O2 -std=c11 src/serial/hist_eq_serial.c -o build/hist_eq_serial
+
+## 3.1 ) Run implementations
+./build/hist_eq_serial results/pgm/input.pgm results/pgm/output_serial.pgm
+
+## 3.2) Open results for visual check (optional)
+eog output/output_openmp.pgm
+
+# 4) Compile implementations - Openmp Code
+
+ gcc -O2 -fopenmp -std=c11 src/openmp/hist_eq_openmp.c -o build/hist_eq_openmp
+
+## 4.1 ) Run implementations
+./build/hist_eq_openmp results/pgm/input.pgm results/pgm/output_openmp.pgm
+
+## 4.2) Open results for visual check (optional)
+eog output/output_openmp.pgm
+
+## 4.3) Generate performance plot (OpenMP)
+python3 scripts/visualization/plot_openmp_result.py
+
+# 5) Compile implementations - MPI Code
+
+    mpicc -O2 -std=c11 src/mpi/hist_eq_mpi.c -o build/hist_eq_mpi
+
+## 5.1 ) Run implementations
+    mpirun -np 1 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+
+## 5.2) Open results for visual check (optional)
+eog output/output_mpi.pgm
+
+## 5.3) Generate performance plot (MPI)
+python3 scripts/visualization/plot_mpi_result.py
+```
+
+---
 
 ## Parallel Histogram Equalization (OpenMP) ⚡️🖼️
 
