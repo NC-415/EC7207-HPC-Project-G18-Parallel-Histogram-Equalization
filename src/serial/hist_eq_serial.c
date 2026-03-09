@@ -1,11 +1,14 @@
 /*
   Serial Histogram Equalization (Grayscale, 8-bit) for PGM (P5) images.
 
+  If no build folder; create it using : 
+    mkdir -p build
+    
   Build (Linux/macOS):
     gcc -O2 -std=c11 src/serial/hist_eq_serial.c -o build/hist_eq_serial
 
-  Run:
-    ./build/hist_eq_serial output/input.pgm output/output_serial.pgm
+  Run (from project root):
+    ./build/hist_eq_serial results/pgm/input.pgm results/pgm/output_serial.pgm
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -175,7 +178,7 @@ static void hist_equalize_u8(uint8_t *img, int w, int h) {
 
 int main(int argc, char **argv) {
     if (argc != 3) {
-        fprintf(stderr, "Usage: %s output/input.pgm output/output_serial.pgm\n", argv[0]);
+        fprintf(stderr, "Usage: %s results/pgm/input.pgm results/pgm/output_serial.pgm\n", argv[0]);
         return 1;
     }
 
@@ -192,16 +195,16 @@ int main(int argc, char **argv) {
     hist_equalize_u8(img, w, h);
 
     clock_t end = clock();
-    // -------- End Timing --------
-
     double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
-
     printf("Serial Execution Time: %f seconds\n", time_spent);
 
     if (!write_pgm_p5(out_path, img, w, h)) {
-        free(img);
-        return 1;
-    }
+    free(img);
+    return 1;
+   }
+
+// convert to PNG automatically
+system("convert results/pgm/output_serial.pgm results/png/02_output_serial.png");
 
     free(img);
     return 0;

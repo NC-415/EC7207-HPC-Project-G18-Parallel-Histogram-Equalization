@@ -1,11 +1,12 @@
 /*
-  MPI Parallel Histogram Equalization (Fixed)
-  
-  Compile:
+  MPI Parallel Histogram Equalization
+
+  Compile (from project root):
     mpicc -O2 -std=c11 src/mpi/hist_eq_mpi.c -o build/hist_eq_mpi
 
-  Run:
-    mpirun -np 1 ./build/hist_eq_mpi output/input.pgm output/output_mpi.pgm
+  Run (from project root):
+    mpirun -np 1 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+
 */
 
 #include <stdio.h>
@@ -176,6 +177,10 @@ int main(int argc, char **argv) {
         }
         
         write_pgm_p5(argv[2], full_image, w, h);
+
+            // convert to PNG automatically
+system("convert results/pgm/output_mpi.pgm results/png/04_output_mpi.png");
+
         free(full_image);
     }       
 

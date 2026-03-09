@@ -6,7 +6,7 @@
    gcc -O2 -fopenmp -std=c11 src/openmp/hist_eq_openmp.c -o build/hist_eq_openmp
 
  Run:
-   ./build/hist_eq_openmp output/input.pgm output/output_openmp.pgm
+   ./build/hist_eq_openmp results/pgm/input.pgm results/pgm/output_openmp.pgm
 */
 
 #include <stdio.h>
@@ -188,7 +188,7 @@ static void hist_equalize_openmp(uint8_t *img,int w,int h){
 int main(int argc,char **argv){
 
     if(argc!=3){
-        printf("Usage: %s output/input.pgm output/output_openmp.pgm\n", argv[0]);
+        printf("Usage: %s results/pgm/input.pgm results/pgm/output_openmp.pgm\n", argv[0]);
         return 1;
     }
 
@@ -224,6 +224,9 @@ int main(int argc,char **argv){
         fprintf(fp,"%d %f\n",threads,time);
 
         write_pgm_p5(argv[2],img,w,h);
+
+        // convert to PNG automatically
+        system("convert results/pgm/output_openmp.pgm results/png/03_output_openmp.png");
 
         free(img);
     }
