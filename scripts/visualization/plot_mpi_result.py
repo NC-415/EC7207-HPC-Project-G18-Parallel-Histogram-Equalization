@@ -1,4 +1,5 @@
-# Run :  python3 scripts/visualization/plot_openmp_result.py
+# Run :  python3 plot_mpi_result.py
+# linux:  python3 scripts/visualization/plot_mpi_result.py
 
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -9,10 +10,10 @@ times = []
 # Resolve paths based on this script's location
 script_dir = Path(__file__).resolve().parent
 project_root = script_dir.parent.parent
-results_path = project_root / "results" / "benchmarks" / "openmp_execution_results.txt"
+results_path = project_root / "results" / "benchmarks" / "mpi_benchmarks.txt"
 plots_dir = project_root / "results" / "plots"
 plots_dir.mkdir(parents=True, exist_ok=True)
-image_path = plots_dir / "openmp_execution_time_plot.png"
+image_path = plots_dir / "mpi_execution_time_plot.png"
 
 # read results
 if not results_path.exists():
@@ -28,7 +29,7 @@ plt.plot(threads, times, marker="o")
 
 plt.xlabel("Number of Threads")
 plt.ylabel("Execution Time (seconds)")
-plt.title("OpenMP Execution Time vs Threads")
+plt.title("MPI Execution Time vs Threads")
 plt.grid(True)
 
 plt.savefig(image_path)

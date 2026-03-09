@@ -32,6 +32,3 @@ a.out
 build/
 cmake-build-*/
 
-# Generated output files
-output/
-*.pgm
