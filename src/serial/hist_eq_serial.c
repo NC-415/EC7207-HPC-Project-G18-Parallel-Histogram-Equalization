@@ -198,6 +198,16 @@ int main(int argc, char **argv) {
     double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
     printf("Serial Execution Time: %f seconds\n", time_spent);
 
+    /* ensure benchmarks directory exists and persist the serial time */
+    (void)system("mkdir -p results/benchmarks");
+    FILE *sf = fopen("results/benchmarks/serial_execution_results.txt", "w");
+    if (sf) {
+        fprintf(sf, "%.6f\n", time_spent);
+        fclose(sf);
+    } else {
+        fprintf(stderr, "Warning: could not write serial baseline file\n");
+    }
+
     if (!write_pgm_p5(out_path, img, w, h)) {
     free(img);
     return 1;
