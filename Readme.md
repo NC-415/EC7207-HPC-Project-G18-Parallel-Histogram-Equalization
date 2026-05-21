@@ -27,7 +27,8 @@ gcc -O2 -std=c11 src/serial/hist_eq_serial.c -o build/hist_eq_serial
 ./build/hist_eq_serial results/pgm/input.pgm results/pgm/output_serial.pgm
 
 ## 3.2) Open results for visual check (optional)
-eog output/output_openmp.pgm
+# eog output/output_openmp.pgm
+/usr/bin/eog results/pgm/output_openmp.pgm
 
 # 4) Compile implementations - Openmp Code
 
