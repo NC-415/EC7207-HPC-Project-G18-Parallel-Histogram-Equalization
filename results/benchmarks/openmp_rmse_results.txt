@@ -1,0 +1,2 @@
+# reference test rmse
+output_serial.pgm output_openmp.pgm 0.000000
