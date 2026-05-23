@@ -96,7 +96,86 @@ python3 scripts/visualization/plot_hybrid_speedup.py
 python3 scripts/visualization/plot_rmse_comparison.py
 ```
 
-## Parallel Histogram Equalization (MPI) 🌐🖼️
+
+
+
+
+## 📁 Folder Structure (OpenMP-related)
+
+- `src/openmp/`
+  - `hist_eq_openmp.c` — OpenMP implementation 🧵
+- `data/`
+  - `input_image.png` — sample input image 🖼️
+- `results/plots/`
+  - `openmp_execution_time_plot.png` — performance plot (execution time) 📈
+
+---
+
+## 🧠 What is OpenMP?
+
+**OpenMP (Open Multi-Processing)** is an API for parallel programming on **shared-memory** systems (multi-core CPUs).  
+In this project, OpenMP helps speed up key steps such as:
+
+- building the **histogram** (counts per intensity) 🧮  
+- computing the **CDF** (cumulative distribution function) 📊  
+- transforming pixel values across the full image ✅  
+
+Parallelism is typically introduced with directives like:
+
+- `#pragma omp parallel`
+- `#pragma omp for`
+- `reduction(...)` / atomic updates (depending on the approach)
+
+---
+
+## 🛠️ Compile (OpenMP)
+
+Using **GCC**:
+
+```bash
+gcc -O3 -fopenmp -o hist_eq_openmp src/openmp/hist_eq_openmp.c -lm
+```
+
+---
+
+## ▶️ Run
+
+Example (adjust depending on how your program accepts input):
+
+```bash
+./hist_eq_openmp
+```
+
+If your program takes an image path:
+
+```bash
+./hist_eq_openmp data/input_image.png
+```
+
+---
+
+## 📈 Results (Performance Plot)
+
+OpenMP execution-time results:
+
+![OpenMP Execution Time Plot](results/plots/openmp_execution_time_plot.png)
+
+---
+
+## 💡 Tips
+
+- You can control the number of threads like this:
+  ```bash
+  export OMP_NUM_THREADS=4
+  ./hist_eq_openmp
+  ```
+- Performance scaling depends on CPU cores, memory bandwidth, and image size ⚙️
+
+
+
+
+
+# Parallel Histogram Equalization (MPI) 🌐🖼️
 
 This project implements **histogram equalization** for grayscale images using **MPI** so the image is split across processes and combined again after processing. Rank 0 reads the input image, distributes work with `MPI_Scatterv`, combines histograms with `MPI_Allreduce`, and gathers the final image with `MPI_Gatherv`.
 
@@ -198,73 +277,52 @@ This project implements **histogram equalization** for grayscale images and acce
 
 ---
 
-## 📁 Folder Structure (OpenMP-related)
 
-- `src/openmp/`
-  - `hist_eq_openmp.c` — OpenMP implementation 🧵
-- `data/`
-  - `input_image.png` — sample input image 🖼️
-- `results/plots/`
-  - `openmp_execution_time_plot.png` — performance plot (execution time) 📈
+# Hybrid Histogram Equalization (MPI)
+This implementation combines **MPI** (inter-process distribution) with **CUDA** (GPU acceleration). Each MPI rank processes a chunk of the image on a GPU; MPI handles distribution and global histogram aggregation.
 
----
+--
 
-## 🧠 What is OpenMP?
+## 📁 Folder Structure (Hybrid-related)
 
-**OpenMP (Open Multi-Processing)** is an API for parallel programming on **shared-memory** systems (multi-core CPUs).  
-In this project, OpenMP helps speed up key steps such as:
-
-- building the **histogram** (counts per intensity) 🧮  
-- computing the **CDF** (cumulative distribution function) 📊  
-- transforming pixel values across the full image ✅  
-
-Parallelism is typically introduced with directives like:
-
-- `#pragma omp parallel`
-- `#pragma omp for`
-- `reduction(...)` / atomic updates (depending on the approach)
+- `src/hybrid(MPI+CUDA)/`
+- `hist_eq_cuda_mpi.cu` — CUDA + MPI implementation
+- `results/benchmarks/`
+- `hybrid_benchmarks.txt` — execution-time results (auto-appended)
+- `hybrid_rmse_results.txt` — RMSE results vs serial output
+- `results/pgm/`
+- `output_hybrid.pgm` — output image
+- `results/png/`
+- `05_output_hybrid.png` — PNG copy created automatically
 
 ---
 
-## 🛠️ Compile (OpenMP)
+## 🧠 How it works (summary)
 
-Using **GCC**:
+1. Rank 0 reads the full image and distributes pixel chunks with `MPI_Scatterv`.
+2. Each rank copies its chunk to the GPU (`cudaMemcpy`) and runs a `histogram_kernel` to produce a local 256-bin histogram.
+3. Local histograms are reduced across ranks with `MPI_Allreduce` to form the global histogram.
+4. Rank 0 computes the CDF and LUT, broadcasts the LUT to ranks, then each rank runs a `remap_kernel` to remap pixels on the GPU.
+5. Processed chunks are gathered with `MPI_Gatherv`; rank 0 writes `results/pgm/output_hybrid.pgm` and updates benchmark files.
 
-```bash
-gcc -O3 -fopenmp -o hist_eq_openmp src/openmp/hist_eq_openmp.c -lm
-```
+### CUDA kernels
 
----
-
-## ▶️ Run
-
-Example (adjust depending on how your program accepts input):
-
-```bash
-./hist_eq_openmp
-```
-
-If your program takes an image path:
-
-```bash
-./hist_eq_openmp data/input_image.png
-```
+- `histogram_kernel`: per-block shared-memory histogram, merged to global memory.
+- `remap_kernel`: per-pixel LUT remap (no shared memory required).
 
 ---
 
-## 📈 Results (Performance Plot)
+## Prerequisites
 
-OpenMP execution-time results:
+| Requirement | Notes |
+|---|---|
+| CUDA Toolkit | 10.0 or later |
+| MPI | OpenMPI or MPICH |
+| NVCC, GCC | nvcc and mpicc available |
 
-![OpenMP Execution Time Plot](results/plots/openmp_execution_time_plot.png)
+
+## GPU assignment
+
+When multiple GPUs are present the program assigns `rank i` → `GPU (i % num_gpus)`. On single-GPU systems ranks will share the GPU (useful for testing but slower).
 
 ---
-
-## 💡 Tips
-
-- You can control the number of threads like this:
-  ```bash
-  export OMP_NUM_THREADS=4
-  ./hist_eq_openmp
-  ```
-- Performance scaling depends on CPU cores, memory bandwidth, and image size ⚙️
