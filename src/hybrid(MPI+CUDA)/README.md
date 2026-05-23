@@ -165,8 +165,16 @@ Three separate scripts, each producing one plot in `results/plots/`:
 # Execution time vs np — one line per block size (matches OpenMP/MPI plot style)
 python3 scripts/visualization/plot_hybrid_result.py
 
+# RMSE vs np — uses results/benchmarks/hybrid_rmse_results.txt
+python3 scripts/visualization/plot_hybrid_rmse.py
+
 # Speedup comparison — MPI-only vs OpenMP vs Hybrid on the same axes
 python3 scripts/visualization/plot_hybrid_speedup.py
+
+# RMSE comparison — MPI vs OpenMP vs Hybrid on the same axes
+python3 scripts/visualization/plot_rmse_comparison.py
+
+MPLBACKEND=Agg python3 "scripts/visualization/plot_hybrid_rmse.py"
 
 # Time breakdown — stacked bar per stage (H2D / hist / allreduce / remap / D2H)
 python3 scripts/visualization/plot_hybrid_breakdown.py
@@ -175,7 +183,9 @@ python3 scripts/visualization/plot_hybrid_breakdown.py
 | Script | Output plot | Description |
 |---|---|---|
 | `plot_hybrid_result.py` | `hybrid_execution_time_plot.png` | Execution time vs number of MPI processes, one line per block size |
+| `plot_hybrid_rmse.py` | `hybrid_rmse_plot.png` | RMSE vs number of MPI processes |
 | `plot_hybrid_speedup.py` | `hybrid_speedup_comparison.png` | Speedup vs process/thread count for MPI-only, OpenMP, and Hybrid on the same axes |
+| `plot_rmse_comparison.py` | `rmse_comparison.png` | RMSE vs process/thread count for MPI, OpenMP, and Hybrid on the same axes |
 | `plot_hybrid_breakdown.py` | `hybrid_time_breakdown.png` | Stacked bar showing H2D / hist / allreduce / remap / D2H per (np, block_size) |
 
 ---
