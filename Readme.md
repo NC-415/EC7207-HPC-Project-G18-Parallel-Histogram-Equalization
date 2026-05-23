@@ -60,7 +60,135 @@ eog output/output_mpi.pgm
 
 ## 5.3) Generate performance plot (MPI)
 python3 scripts/visualization/plot_mpi_result.py
+
+## 6) Compile implementations - Hybrid CUDA + MPI Code
+
+mkdir -p build
+nvcc -O2 -std=c++11 \
+  "src/hybrid(MPI+CUDA)/hist_eq_cuda_mpi.cu" \
+  -I/usr/lib/x86_64-linux-gnu/openmpi/include \
+  -L/usr/lib/x86_64-linux-gnu/openmpi/lib \
+  -lmpi \
+  -o build/hist_eq_cuda_mpi
+
+## 6.1) Run implementations
+    mpirun -np 1 ./build/hist_eq_cuda_mpi results/pgm/input.pgm results/pgm/output_hybrid.pgm
+    mpirun -np 2 ./build/hist_eq_cuda_mpi results/pgm/input.pgm results/pgm/output_hybrid.pgm
+    mpirun -np 4 ./build/hist_eq_cuda_mpi results/pgm/input.pgm results/pgm/output_hybrid.pgm
+    mpirun -np 6 ./build/hist_eq_cuda_mpi results/pgm/input.pgm results/pgm/output_hybrid.pgm
+
+## 6.2) Open results for visual check (optional)
+eog results/pgm/output_hybrid.pgm
+
+## 6.3) Generate performance plot (Hybrid)
+```bash
+python3 scripts/visualization/plot_hybrid_result.py
+python3 scripts/visualization/plot_hybrid_rmse.py
 ```
+
+## 7) Comparison plots
+
+```bash
+# Speedup comparison — MPI-only vs OpenMP vs Hybrid on the same axes
+python3 scripts/visualization/plot_hybrid_speedup.py
+
+# RMSE comparison — MPI vs OpenMP vs Hybrid on the same axes
+python3 scripts/visualization/plot_rmse_comparison.py
+```
+
+## Parallel Histogram Equalization (MPI) 🌐🖼️
+
+This project implements **histogram equalization** for grayscale images using **MPI** so the image is split across processes and combined again after processing. Rank 0 reads the input image, distributes work with `MPI_Scatterv`, combines histograms with `MPI_Allreduce`, and gathers the final image with `MPI_Gatherv`.
+
+---
+
+## 📁 Folder Structure (MPI-related)
+
+- `src/mpi/`
+  - `hist_eq_mpi.c` — MPI implementation 📡
+- `results/benchmarks/`
+  - `mpi_execution_results.txt` — execution-time results
+  - `mpi_rmse_results.txt` — RMSE results against the serial output
+- `results/pgm/`
+  - `output_mpi.pgm` — output image written by the MPI run
+- `results/png/`
+  - `04_output_mpi.png` — PNG copy created automatically after the run
+
+---
+
+## 🧠 How it works
+
+### Algorithm overview
+
+1. Rank 0 reads `results/pgm/input.pgm`.
+2. The image is divided across ranks with `MPI_Scatterv`.
+3. Each rank computes a local histogram for its chunk.
+4. `MPI_Allreduce` combines all local histograms into one global histogram.
+5. Rank 0 computes the CDF and look-up table (LUT).
+6. Each rank remaps its local pixels through the LUT.
+7. `MPI_Gatherv` collects the processed chunks back on rank 0.
+8. Rank 0 writes `results/pgm/output_mpi.pgm` and updates the benchmark files.
+
+### MPI calls used
+
+- `MPI_Init` / `MPI_Finalize`
+- `MPI_Comm_rank` / `MPI_Comm_size`
+- `MPI_Bcast`
+- `MPI_Scatterv`
+- `MPI_Allreduce`
+- `MPI_Gatherv`
+
+---
+
+## 🛠️ Compile (MPI)
+
+Run from the **project root**:
+
+```bash
+mkdir -p build
+mpicc -O2 -std=c11 src/mpi/hist_eq_mpi.c -o build/hist_eq_mpi
+```
+
+---
+
+## ▶️ Run (MPI)
+
+Run from the **project root**. Repeat for each process count to populate the benchmark files:
+
+```bash
+mpirun -np 1 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+mpirun -np 2 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+mpirun -np 3 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+mpirun -np 4 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+mpirun -np 5 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+mpirun -np 6 ./build/hist_eq_mpi results/pgm/input.pgm results/pgm/output_mpi.pgm
+```
+
+The program prints the elapsed time, writes `results/pgm/output_mpi.pgm`, appends to `results/benchmarks/mpi_execution_results.txt`, and records RMSE values in `results/benchmarks/mpi_rmse_results.txt` when the serial reference output is available.
+
+---
+
+## 📈 Results
+
+MPI execution-time results:
+
+![MPI Execution Time Plot](results/plots/mpi_execution_time_plot.png)
+
+MPI RMSE results:
+
+![MPI RMSE Plot](results/plots/mpi_rmse_plot.png)
+
+The output image is also converted automatically to PNG at `results/png/04_output_mpi.png`.
+
+---
+
+## 💡 Tips
+
+- If you want to regenerate the MPI plot, run:
+  ```bash
+  python3 scripts/visualization/plot_mpi_result.py
+  ```
+- RMSE is calculated against `results/pgm/output_serial.pgm`, so generate the serial output first.
 
 ---
 
