@@ -19,11 +19,19 @@ plots_dir.mkdir(parents=True, exist_ok=True)
 image_path   = plots_dir / "hybrid_speedup_comparison.png"
 
 hybrid_path = bench_dir / "hybrid_benchmarks.txt"
-mpi_path    = bench_dir / "mpi_benchmarks.txt"
-omp_path    = bench_dir / "openmp_execution_results.txt"
+mpi_exec_path = bench_dir / "mpi_execution_results.txt"
+omp_exec_path = bench_dir / "openmp_execution_results.txt"
+
+# speedup files (saved, same format as MPI/OpenMP speedup outputs)
+mpi_speedup_path = bench_dir / "mpi_speedup_results.txt"
+omp_speedup_path = bench_dir / "openmp_speedup_results.txt"
+hybrid_speedup_path = bench_dir / "hybrid_speedup_results.txt"
+
+# serial baseline (used to compute speedup values)
+serial_time_path = bench_dir / "serial_execution_results.txt"
 
 # ── Check files exist ─────────────────────────────────────────────────────────
-missing = [p for p in (hybrid_path, mpi_path, omp_path) if not p.exists()]
+missing = [p for p in (hybrid_path, mpi_exec_path, omp_exec_path) if not p.exists()]
 if missing:
     print("Missing benchmark files:")
     for p in missing:
@@ -62,40 +70,75 @@ def load_hybrid_best(path):
     return best
 
 # ── Load ──────────────────────────────────────────────────────────────────────
-mpi_data    = load_two_col(mpi_path)
-omp_data    = load_two_col(omp_path)
 hybrid_best = load_hybrid_best(hybrid_path)
 
-if not hybrid_best:
-    print(f"No data found in {hybrid_path}")
+# Ensure we have a serial baseline to compute speedups the same way as other scripts
+serial_time = None
+if serial_time_path.exists():
+    try:
+        with serial_time_path.open() as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"): continue
+                serial_time = float(line.split()[0])
+                break
+    except Exception:
+        serial_time = None
+
+# Compute and write hybrid speedup file using serial baseline (if available)
+if serial_time is not None and hybrid_best:
+    with hybrid_speedup_path.open("w", encoding="utf-8") as f:
+        f.write("# processes speedup\n")
+        for np_ in sorted(hybrid_best):
+            t = hybrid_best[np_]
+            speedup = serial_time / t if t > 0 else 0.0
+            f.write(f"{np_} {speedup:.6f}\n")
+
+# Prefer reading saved speedup files; fall back to execution-time files if missing
+def ensure_speedup(path_speedup, path_exec, label):
+    if path_speedup.exists():
+        return load_two_col(path_speedup)
+    # fallback: compute from execution times if serial baseline available
+    if serial_time is None:
+        print(f"Missing {path_speedup} and no serial baseline available to compute {label} speedup.")
+        return {}
+    if not path_exec.exists():
+        print(f"Missing execution file to compute {label} speedup: {path_exec}")
+        return {}
+    exec_data = load_two_col(path_exec)
+    speedup = {k: (serial_time / v if v > 0 else 0.0) for k, v in exec_data.items()}
+    # write the derived speedup file for transparency
+    with path_speedup.open("w", encoding="utf-8") as f:
+        f.write("# processes speedup\n")
+        for k in sorted(speedup):
+            f.write(f"{k} {speedup[k]:.6f}\n")
+    return speedup
+
+mpi_data = ensure_speedup(mpi_speedup_path, mpi_exec_path, "MPI")
+omp_data = ensure_speedup(omp_speedup_path, omp_exec_path, "OpenMP")
+hybrid_data = load_two_col(hybrid_speedup_path) if hybrid_speedup_path.exists() else {}
+
+if not hybrid_best and not hybrid_data:
+    print(f"No data found in {hybrid_path} and no hybrid speedup available")
     sys.exit(1)
-
-# ── Baseline: MPI np=1 ────────────────────────────────────────────────────────
-baseline_s = mpi_data.get(1)
-if baseline_s is None:
-    baseline_s = mpi_data[min(mpi_data)]
-    print(f"Note: MPI np=1 not found — using np={min(mpi_data)} as baseline.")
-
-print(f"Baseline (MPI np=1): {baseline_s:.6f} s")
 
 # ── Plot ──────────────────────────────────────────────────────────────────────
 plt.figure(figsize=(8, 5))
 
-mpi_np    = sorted(mpi_data)
-plt.plot(mpi_np, [baseline_s / mpi_data[n] for n in mpi_np],
-         marker="s", label="MPI-only")
+# Plot saved/derived speedup files
+mpi_np = sorted(mpi_data)
+plt.plot(mpi_np, [mpi_data[n] for n in mpi_np], marker="s", label="MPI-only")
 
 omp_t = sorted(omp_data)
-plt.plot(omp_t, [baseline_s / omp_data[t] for t in omp_t],
-         marker="^", label="OpenMP")
+plt.plot(omp_t, [omp_data[t] for t in omp_t], marker="^", label="OpenMP")
 
-hyb_np = sorted(hybrid_best)
-plt.plot(hyb_np, [baseline_s / hybrid_best[n] for n in hyb_np],
-         marker="o", label="CUDA+MPI Hybrid (best block size)")
+# hybrid_data may be empty if we couldn't compute it
+hyb_np = sorted(hybrid_data)
+if hyb_np:
+    plt.plot(hyb_np, [hybrid_data[n] for n in hyb_np], marker="o", label="CUDA+MPI Hybrid")
 
 all_x = sorted(set(mpi_np + omp_t + hyb_np))
-plt.plot(all_x, [float(x) for x in all_x],
-         linestyle="--", color="grey", linewidth=1.0, label="Ideal linear speedup")
+plt.plot(all_x, [float(x) for x in all_x], linestyle="--", color="grey", linewidth=1.0, label="Ideal linear speedup")
 
 plt.xlabel("Number of Processes / Threads")
 plt.ylabel("Speedup  (relative to MPI np=1)")
