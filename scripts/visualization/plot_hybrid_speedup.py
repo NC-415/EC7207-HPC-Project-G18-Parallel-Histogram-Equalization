@@ -93,6 +93,7 @@ if serial_time is not None and hybrid_best:
             t = hybrid_best[np_]
             speedup = serial_time / t if t > 0 else 0.0
             f.write(f"{np_} {speedup:.6f}\n")
+    print(f"Wrote hybrid speedup to: {hybrid_speedup_path}")
 
 # Prefer reading saved speedup files; fall back to execution-time files if missing
 def ensure_speedup(path_speedup, path_exec, label):
@@ -112,6 +113,7 @@ def ensure_speedup(path_speedup, path_exec, label):
         f.write("# processes speedup\n")
         for k in sorted(speedup):
             f.write(f"{k} {speedup[k]:.6f}\n")
+    print(f"Wrote derived {label} speedup to: {path_speedup}")
     return speedup
 
 mpi_data = ensure_speedup(mpi_speedup_path, mpi_exec_path, "MPI")
@@ -141,8 +143,8 @@ all_x = sorted(set(mpi_np + omp_t + hyb_np))
 plt.plot(all_x, [float(x) for x in all_x], linestyle="--", color="grey", linewidth=1.0, label="Ideal linear speedup")
 
 plt.xlabel("Number of Processes / Threads")
-plt.ylabel("Speedup  (relative to MPI np=1)")
-plt.title("Speedup Comparison: MPI vs OpenMP vs CUDA+MPI Hybrid")
+plt.ylabel("Speedup (relative to serial execution)")
+plt.title("Speedup Comparison (baseline: serial) — MPI vs OpenMP vs CUDA+MPI Hybrid")
 plt.legend()
 plt.grid(True)
 
