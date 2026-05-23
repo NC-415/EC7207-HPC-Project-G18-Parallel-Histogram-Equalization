@@ -1,2 +1,5 @@
-# reference test rmse
-output_serial.pgm output_openmp.pgm 0.000000
+# threads rmse
+1 0.000000
+2 0.000000
+4 0.000000
+8 0.000000
