@@ -15,6 +15,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <mpi.h>
+#include <math.h>
 
 #define L 256
 
@@ -61,6 +62,20 @@ static int write_pgm_p5(const char *path, const uint8_t *data, int w, int h) {
     fwrite(data, 1, (size_t)w * h, fp);
     fclose(fp);
     return 1;
+}
+
+static double compute_rmse(const uint8_t *a, const uint8_t *b, int w, int h)
+{
+    size_t n = (size_t)w * (size_t)h;
+    double sum_sq = 0.0;
+
+    for (size_t i = 0; i < n; i++)
+    {
+        double diff = (double)a[i] - (double)b[i];
+        sum_sq += diff * diff;
+    }
+
+    return sqrt(sum_sq / (double)n);
 }
 
 // ---------- Main MPI Logic ----------
@@ -164,25 +179,49 @@ int main(int argc, char **argv) {
     // --- End Timing ---
 
    if (rank == 0) {
-        printf("MPI Processes: %d | Time: %f seconds\n", size, end_time - start_time);
+        double time = end_time - start_time;
+        printf("MPI Processes: %d | Time: %f seconds\n", size, time);
         
-        // Open for appending ("a") to collect all experiment results in one file
-        FILE *res_fp = fopen("results/benchmarks/mpi_benchmarks.txt", "a");
+        // 1. Handle Execution Results File
+        FILE *res_fp = fopen("results/benchmarks/mpi_execution_results.txt", "a");
         if(res_fp) {
-            // FORMAT: <Number of Processes> <Execution Time>
-            fprintf(res_fp, "%d %f\n", size, end_time - start_time);
+            fseek(res_fp, 0, SEEK_END);
+            if (ftell(res_fp) == 0) fprintf(res_fp, "# processes time\n");
+            fprintf(res_fp, "%d %f\n", size, time);
             fclose(res_fp);
-        } else {
-            fprintf(stderr, "Error: Could not open benchmarks file.\n");
         }
-        
+
         write_pgm_p5(argv[2], full_image, w, h);
 
-            // convert to PNG automatically
-system("convert results/pgm/output_mpi.pgm results/png/04_output_mpi.png");
+        // 2. Handle RMSE File (Validation against sequential implementation output)
+        int ref_w = 0, ref_h = 0, ref_maxval = 0;
+        uint8_t *reference = read_pgm_p5("results/pgm/output_serial.pgm", &ref_w, &ref_h, &ref_maxval);
+        
+        if (reference) {
+            if (ref_w == w && ref_h == h) {
+                double rmse_value = compute_rmse(reference, full_image, w, h);
+                printf("MPI Processes: %d | Time: %f | RMSE: %f\n", size, time, rmse_value);
+                
+                FILE *rmse_fp = fopen("results/benchmarks/mpi_rmse_results.txt", "a");
+                if (rmse_fp) {
+                    fseek(rmse_fp, 0, SEEK_END);
+                    if (ftell(rmse_fp) == 0) fprintf(rmse_fp, "# processes rmse\n");
+                    fprintf(rmse_fp, "%d %f\n", size, rmse_value);
+                    fclose(rmse_fp);
+                }
+            } else {
+                printf("Error: Serial and MPI images have different dimensions\n");
+            }
+            free(reference);
+        } else {
+            printf("Error: Could not read results/pgm/output_serial.pgm for RMSE calculation\n");
+        }
+
+        // convert to PNG automatically
+        system("convert results/pgm/output_mpi.pgm results/png/04_output_mpi.png");
 
         free(full_image);
-    }       
+    }   
 
     free(local_pixels);
     free(send_counts);
