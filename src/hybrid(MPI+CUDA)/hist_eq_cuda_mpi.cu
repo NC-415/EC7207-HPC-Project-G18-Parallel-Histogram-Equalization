@@ -43,7 +43,7 @@
 
   COMPILE (from project root):
     nvcc -O2 -std=c++11 \
-      "src/hybrid(MPI+CUDA)/hist_eq_cuda_mpi_optimized.cu" \
+      "src/hybrid(MPI+CUDA)/hist_eq_cuda_mpi.cu" \
       -Xcompiler "$(mpicc --showme:compile)" \
       $(mpicc --showme:libs) \
       -o build/hist_eq_cuda_mpi_opt
@@ -54,7 +54,7 @@
     mpirun -np 4 ./build/hist_eq_cuda_mpi_opt results/pgm/input.pgm results/pgm/output_hybrid_opt.pgm
 
   OUTPUT:
-    results/benchmarks/hybrid_optimized_benchmarks.txt
+    results/benchmarks/hybrid_benchmarks.txt
 */
 
 #include <stdio.h>
@@ -356,7 +356,7 @@ int main(int argc, char **argv)
     /* ── Benchmark file (rank 0, append) ────────────────────────────────── */
     FILE *bench_fp = NULL;
     if (rank == 0) {
-        bench_fp = fopen("results/benchmarks/hybrid_optimized_benchmarks.txt", "a");
+        bench_fp = fopen("results/benchmarks/hybrid_benchmarks.txt", "a");
         if (bench_fp) {
             fseek(bench_fp, 0, SEEK_END);
             if (ftell(bench_fp) == 0)
