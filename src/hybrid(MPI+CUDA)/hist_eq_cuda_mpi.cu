@@ -43,7 +43,7 @@
 
   COMPILE (from project root):
     nvcc -O2 -std=c++11 \
-      "src/hybrid(MPI+CUDA)/hist_eq_cuda_mpi.cu" \
+      "src/hybrid(MPI+CUDA)/hist_eq_cuda_mpi_optimized.cu" \
       -Xcompiler "$(mpicc --showme:compile)" \
       $(mpicc --showme:libs) \
       -o build/hist_eq_cuda_mpi_opt
@@ -54,7 +54,7 @@
     mpirun -np 4 ./build/hist_eq_cuda_mpi_opt results/pgm/input.pgm results/pgm/output_hybrid_opt.pgm
 
   OUTPUT:
-    results/benchmarks/hybrid_benchmarks.txt
+    results/benchmarks/hybrid_optimized_benchmarks.txt
 */
 
 #include <stdio.h>
@@ -64,7 +64,6 @@
 #include <ctype.h>
 #include <mpi.h>
 #include <cuda_runtime.h>
-#include <math.h>
 
 /* ── Constants ──────────────────────────────────────────────────────────────*/
 #define L            256          /* histogram bins (8-bit pixels)             */
@@ -168,8 +167,6 @@ static int write_pgm_p5(const char *path, const uint8_t *data, int w, int h) {
     fclose(fp);
     return 1;
 }
-
-static double compute_rmse(const uint8_t *a, const uint8_t *b, int w, int h);
 
 /* ═══════════════════════════════════════════════════════════════════════════
    CUDA KERNELS
@@ -589,30 +586,6 @@ int main(int argc, char **argv)
                    "results/png/05_output_hybrid_opt.png");
             printf("Output written: %s\n", argv[2]);
         }
-        /* --- Compute RMSE against serial output (if available) --- */
-        {
-            int ref_w = 0, ref_h = 0;
-            uint8_t *reference = read_pgm_p5("results/pgm/output_serial.pgm", &ref_w, &ref_h);
-            if (reference) {
-                if (ref_w == w && ref_h == h) {
-                    double rmse_value = compute_rmse(reference, full_image, w, h);
-                    printf("Hybrid np: %d | RMSE: %f\n", size, rmse_value);
-                    FILE *rmse_fp = fopen("results/benchmarks/hybrid_rmse_results.txt", "a");
-                    if (rmse_fp) {
-                        fseek(rmse_fp, 0, SEEK_END);
-                        if (ftell(rmse_fp) == 0) fprintf(rmse_fp, "# processes rmse\n");
-                        fprintf(rmse_fp, "%d %f\n", size, rmse_value);
-                        fclose(rmse_fp);
-                    }
-                } else {
-                    printf("Error: Serial and Hybrid images have different dimensions\n");
-                }
-                free(reference);
-            } else {
-                printf("Error: Could not read results/pgm/output_serial.pgm for RMSE calculation\n");
-            }
-        }
-
         if (bench_fp) fclose(bench_fp);
     }
 
@@ -642,15 +615,4 @@ int main(int argc, char **argv)
 
     MPI_CHECK(MPI_Finalize());
     return 0;
-}
-
-static double compute_rmse(const uint8_t *a, const uint8_t *b, int w, int h)
-{
-    size_t n = (size_t)w * (size_t)h;
-    double sum_sq = 0.0;
-    for (size_t i = 0; i < n; i++) {
-        double diff = (double)a[i] - (double)b[i];
-        sum_sq += diff * diff;
-    }
-    return sqrt(sum_sq / (double)n);
 }
